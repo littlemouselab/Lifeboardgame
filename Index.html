@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>人生棋盤遊戲</title>
+
+<style>
+body {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  background: #f5f6fa;
+  margin: 0;
+  padding: 16px;
+  font-size: 18px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.big {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  font-size: 18px;
+  border-radius: 10px;
+  border: none;
+  background: #4a69bd;
+  color: white;
+}
+
+button.secondary {
+  background: #60a3bc;
+}
+
+button.reset {
+  background: #b71540;
+}
+
+.hidden {
+  display: none;
+}
+
+.choiceBtn {
+  background: #1e3799;
+}
+
+#history, #timeline {
+  font-size: 14px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+/* Timeline */
+.timeline-item {
+  border-left: 5px solid #4a69bd;
+  padding-left: 10px;
+  margin-bottom: 8px;
+}
+
+.timeline-item span {
+  font-weight: bold;
+}
+
+/* Archetype Card */
+.archetype-card {
+  border-radius: 16px;
+  padding: 24px;
+  color: white;
+  text-align: center;
+}
+
+.archetype-card .emoji {
+  font-size: 48px;
+}
+
+.reflection {
+  margin-top: 16px;
+  font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🎲 人生棋盤遊戲</h1>
+
+<div class="panel">
+  <div class="big">位置：<span id="pos">0</span> / 50</div>
+  <div class="big">金幣：<span id="coins">20</span></div>
+  <button onclick="rollDice()">擲骰子</button>
+</div>
+
+<!-- Choice Panel -->
+<div id="choicePanel" class="panel hidden">
+  <div id="question" class="big"></div>
+  <button class="choiceBtn" onclick="choose('A')"></button>
+  <button class="choiceBtn" onclick="choose('B')"></button>
+</div>
+
+<!-- Timeline -->
+<div class="panel">
+  <h3>🧭 人生時間線</h3>
+  <div id="timeline"></div>
+</div>
+
+<!-- Ending Card -->
+<div id="endingCard" class="panel hidden">
+  <div id="card" class="archetype-card">
+    <div class="emoji" id="cardEmoji"></div>
+    <h2 id="cardTitle"></h2>
+    <h3 id="cardZh"></h3>
+    <p id="cardSummary"></p>
+    <div class="reflection">
+      <strong>💭 想一想：</strong>
+      <span id="cardReflection"></span>
+    </div>
+  </div>
+  <button class="reset" onclick="resetGame()">再玩一次</button>
+</div>
+
+<script>
+// ===== Player =====
+let player = {
+  position: 0,
+  coins: 20,
+  history: [],
+  tags: {}
+};
+
+// ===== Board =====
+const boardChoices = {
+  8: "Q1",
+  18: "Q2",
+  30: "Q3",
+  42: "Q4"
+};
+
+// ===== Choices =====
+const choices = {
+  Q1: {
+    q: "Academic Integrity｜學術誠信",
+    A: { text: "Use AI / Copy paste（快快過關）", coins: 6, tag: "FAST_TRACK" },
+    B: { text: "Write yourself（慢慢打底）", coins: 6, tag: "STEADY" }
+  },
+  Q2: {
+    q: "Money｜金錢選擇",
+    A: { text: "Speculate 炒股 / Bitcoin", coins: 8, tag: "RISK_RIDER" },
+    B: { text: "Steady path 穩定累積", coins: 6, tag: "STEADY" }
+  },
+  Q3: {
+    q: "Study vs Social｜讀書定社交？",
+    A: { text: "Party first 人緣行先", coins: 6, tag: "SOCIAL" },
+    B: { text: "Study first 專注進度", coins: 6, tag: "STEADY" }
+  },
+  Q4: {
+    q: "Romantic Dilemma｜感情抉擇",
+    A: { text: "Chase 敢愛敢衝", coins: 6, tag: "BALANCER" },
+    B: { text: "Friendship first 穩陣守住", coins: 6, tag: "SAFE_KEEPER" }
+  }
+};
+
+// ===== Archetypes =====
+const archetypes = {
+  FAST_TRACK: {
+    title: "Fast Track Survivor",
+    zh: "快線過關者",
+    summary: "你重視效率，短期成果快，但壓力與代價潛伏。",
+    reflection: "如果慢一點，會唔會見到更多可能？",
+    color: "#c0392b",
+    emoji: "⚡"
+  },
+  RISK_RIDER: {
+    title: "Risk Rider",
+    zh: "風險騎士",
+    summary: "你追求刺激與不確定，願意承擔高風險。",
+    reflection: "當失敗出現，你準備好承受未？",
+    color: "#e67e22",
+    emoji: "🎢"
+  },
+  SOCIAL: {
+    title: "Social Connector",
+    zh: "人緣連結者",
+    summary: "你重視關係與歸屬感，人際網絡是力量。",
+    reflection: "如果關係有代價，你會點揀？",
+    color: "#2980b9",
+    emoji: "🤝"
+  },
+  STEADY: {
+    title: "Steady Builder",
+    zh: "穩健建築師",
+    summary: "你慢慢打好基礎，重視長線成長。",
+    reflection: "當世界催你加速，你守得住嗎？",
+    color: "#27ae60",
+    emoji: "🧱"
+  },
+  BALANCER: {
+    title: "Brave Balancer",
+    zh: "勇敢平衡者",
+    summary: "你嘗試同時成長與去愛，願意承擔情感風險。",
+    reflection: "當兩邊拉扯，你會放棄邊一樣？",
+    color: "#8e44ad",
+    emoji: "⚖️"
+  },
+  SAFE_KEEPER: {
+    title: "Safe Keeper",
+    zh: "守護者",
+    summary: "你優先守住重要的人與關係，重視安全感。",
+    reflection: "如果機會要你冒險，你會行出一步嗎？",
+    color: "#16a085",
+    emoji: "🛡️"
+  }
+};
+
+// ===== Game Logic =====
+function rollDice() {
+  if (player.position >= 50) return;
+  const dice = Math.floor(Math.random() * 6) + 1;
+  player.position += dice;
+  if (player.position > 50) player.position = 50;
+
+  if (boardChoices[player.position]) {
+    showChoice(boardChoices[player.position]);
+  } else {
+    const change = Math.floor(Math.random() * 5) - 2;
+    player.coins += change;
+    logTimeline(`普通事件：金幣 ${change >= 0 ? "+" : ""}${change}`, "STEADY");
+  }
+
+  updateUI();
+
+  if (player.position === 50) {
+    showEndingCard();
+  }
+}
+
+function showChoice(qid) {
+  const q = choices[qid];
+  document.getElementById("question").innerText = q.q;
+  document.querySelectorAll(".choiceBtn")[0].innerText = "A. " + q.A.text;
+  document.querySelectorAll(".choiceBtn")[1].innerText = "B. " + q.B.text;
+  document.getElementById("choicePanel").dataset.qid = qid;
+  document.getElementById("choicePanel").classList.remove("hidden");
+}
+
+function choose(option) {
+  const panel = document.getElementById("choicePanel");
+  const qid = panel.dataset.qid;
+  const result = choices[qid][option];
+
+  player.coins += result.coins;
+  player.tags[result.tag] = (player.tags[result.tag] || 0) + 1;
+
+  logTimeline(choices[qid].q + " → " + result.text, result.tag);
+  panel.classList.add("hidden");
+  updateUI();
+}
+
+function logTimeline(text, tag) {
+  player.history.push({
+    step: player.position,
+    text,
+    tag
+  });
+  renderTimeline();
+}
+
+function renderTimeline() {
+  const t = document.getElementById("timeline");
+  t.innerHTML = "";
+  player.history.forEach(item => {
+    const div = document.createElement("div");
+    div.className = "timeline-item";
+    div.style.borderColor = archetypes[item.tag].color;
+    div.innerHTML = `<span>第 ${item.step} 格</span>：${item.text}`;
+    t.appendChild(div);
+  });
+}
+
+function getFinalArchetype() {
+  let max = 0, result = "STEADY";
+  for (let t in player.tags) {
+    if (player.tags[t] > max) {
+      max = player.tags[t];
+      result = t;
+    }
+  }
+  return result;
+}
+
+function showEndingCard() {
+  const tag = getFinalArchetype();
+  const data = archetypes[tag];
+
+  document.getElementById("cardEmoji").innerText = data.emoji;
+  document.getElementById("cardTitle").innerText = data.title;
+  document.getElementById("cardZh").innerText = data.zh;
+  document.getElementById("cardSummary").innerText = data.summary;
+  document.getElementById("cardReflection").innerText = data.reflection;
+
+  const card = document.getElementById("card");
+  card.style.background = data.color;
+
+  document.getElementById("endingCard").classList.remove("hidden");
+}
+
+function updateUI() {
+  document.getElementById("pos").innerText = player.position;
+  document.getElementById("coins").innerText = player.coins;
+}
+
+function resetGame() {
+  if (!confirm("重新開始？")) return;
+  player = { position: 0, coins: 20, history: [], tags: {} };
+  document.getElementById("endingCard").classList.add("hidden");
+  document.getElementById("timeline").innerHTML = "";
+  updateUI();
+}
+</script>
+
+</body>
+</html>
