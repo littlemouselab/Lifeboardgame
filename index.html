@@ -77,7 +77,6 @@
 
 <div class="panel">
   <div class="big">位置：<span id="pos">0</span> / 50</div>
-  <div class="big">金幣：<span id="coins">20</span></div>
   <div class="big">經驗值 EXP：<span id="exp">0</span></div>
   <button onclick="rollDice()">擲骰</button>
 </div>
@@ -107,7 +106,6 @@
 /* ---------- 玩家狀態 ---------- */
 const player = {
   position: 0,
-  coins: 20,
   exp: 0,
   riskScore: 0,
   triggered: []
@@ -145,17 +143,17 @@ const choices = {
   }
 };
 
-/* ---------- 結局 Archetypes ---------- */
+/* ---------- Outcome Archetypes ---------- */
 const archetypes = [
   { min: 6,  title: "The All‑In Drifter", emoji:"🔥", color:"#c0392b",
     summary:"極端冒險、刺激導向的人生路。",
-    reflect:"你享受速度與刺激，是否也看見代價？" },
+    reflect:"你享受速度與刺激，也看見代價嗎？" },
   { min: 3,  title: "Opportunistic Sprinter", emoji:"⚡", color:"#e67e22",
     summary:"快手博位，搶機會但消耗快。",
     reflect:"你贏緊機會，但能否撐到最後？" },
   { min: -2, title: "Balancer", emoji:"⚖️", color:"#8e44ad",
     summary:"風險與穩定之間走鋼線。",
-    reflect:"平衡是否讓你前進，還是拖慢？" },
+    reflect:"平衡是否推動你，還是拖慢？" },
   { min: -5, title: "Grounded Builder", emoji:"🏗️", color:"#27ae60",
     summary:"慢工起樓，基礎穩定。",
     reflect:"你行得慢，但世界會等你嗎？" },
@@ -182,7 +180,7 @@ function rollDice() {
 
   updateUI();
 
-  // 檢查跨越關鍵格
+  // 跨越關鍵格
   const crossed = milestones.find(m =>
     prev < m.pos &&
     player.position >= m.pos &&
@@ -194,13 +192,6 @@ function rollDice() {
     showChoice(crossed.qid);
     return;
   }
-
-  // 普通金幣事件
-  const change = Math.floor(Math.random() * 5) - 2;
-  player.coins += change;
-  logEvent(`金幣 ${change >= 0 ? "+" : ""}${change}`);
-
-  updateUI();
 
   if (player.position >= 50) showEndingCard();
 }
@@ -250,7 +241,6 @@ function showEndingCard() {
 /* ---------- UI ---------- */
 function updateUI() {
   document.getElementById("pos").innerText = player.position;
-  document.getElementById("coins").innerText = player.coins;
   document.getElementById("exp").innerText = player.exp;
 }
 
