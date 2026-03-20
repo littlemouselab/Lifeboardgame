@@ -3,127 +3,313 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>人生選擇遊戲</title>
+<title>人生棋盤遊戲</title>
+
 <style>
-body { font-family: system-ui; background:#f5f6fa; padding:16px; }
-button { width:100%; padding:14px; margin:8px 0; font-size:16px; }
-.card { background:#fff; padding:16px; border-radius:12px; }
-.hidden { display:none; }
+body{
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  background:#f5f6fa;
+  margin:12px;
+}
+h1{ margin-top:6px; }
+
+.panel{
+  background:#fff;
+  padding:14px;
+  margin-bottom:10px;
+  border-radius:12px;
+}
+.big{
+  font-size:20px;
+  font-weight:bold;
+  margin:6px 0;
+}
+button{
+  width:100%;
+  padding:14px;
+  border:none;
+  border-radius:12px;
+  background:#4a69bd;
+  color:#fff;
+  font-size:18px;
+  margin-top:8px;
+}
+.choiceBtn{
+  background:#1e3799;
+  margin-top:10px;
+}
+.hidden{ display:none; }
+
+.timeline{
+  max-height:220px;
+  overflow:auto;
+  font-size:14px;
+  text-align:left;
+}
+.timeline-item{
+  border-left:5px solid #aaa;
+  padding-left:10px;
+  margin-bottom:6px;
+}
+
+/* 骰仔動畫 */
+@keyframes diceRoll{
+  0%{transform:rotate(0deg) scale(1);}
+  30%{transform:rotate(120deg) scale(1.2);}
+  60%{transform:rotate(240deg) scale(1.2);}
+  100%{transform:rotate(360deg) scale(1);}
+}
+.dice-rolling{
+  animation:diceRoll 0.6s ease-in-out;
+}
+
+/* Outcome 卡 */
+.archetype-card{
+  border-radius:18px;
+  padding:24px;
+  color:white;
+  text-align:center;
+}
+.archetype-emoji{
+  font-size:48px;
+}
+.outcome-img{
+  width:100%;
+  max-width:320px;
+  margin:12px auto;
+  display:block;
+  border-radius:12px;
+}
+.reflection{
+  margin-top:12px;
+  font-size:14px;
+  opacity:0.95;
+}
 </style>
 </head>
 
 <body>
 
-<h1>人生選擇遊戲</h1>
+<h1>人生棋盤遊戲</h1>
 
-<div id="game" class="card">
-  <p id="question"></p>
-  <button onclick="choose('A')" id="btnA"></button>
-  <button onclick="choose('B')" id="btnB"></button>
+<div class="panel">
+  <div class="big">位置：<span id="pos">0</span> / 50</div>
+  <div class="big">經驗值 EXP：<span id="exp">0</span></div>
+
+  <div id="diceBox" style="margin-top:10px;">
+    <div id="dice" style="font-size:48px;">🎲</div>
+    <div id="diceText" style="font-size:16px;opacity:.85;"></div>
+  </div>
+
+  <button onclick="rollDice()">擲骰</button>
 </div>
 
-<div id="result" class="card hidden">
-  <h2 id="outcomeTitle"></h2>
-  <p id="outcomeDesc"></p>
-  <button onclick="resetGame()">再玩一次</button>
+<div id="choicePanel" class="panel hidden">
+  <div id="question" class="big"></div>
+  <button class="choiceBtn" onclick="choose('A')" id="choiceA"></button>
+  <button class="choiceBtn" onclick="choose('B')" id="choiceB"></button>
+</div>
+
+<div class="panel">
+  <h3>人生時間線</h3>
+  <div id="timeline" class="timeline"></div>
+</div>
+
+<div id="endingCard" class="panel hidden">
+  <div id="endingInner" class="archetype-card">
+    <div id="cardEmoji" class="archetype-emoji"></div>
+    <img id="outcomeImg" class="outcome-img" alt="Outcome image">
+    <h2 id="cardTitle"></h2>
+    <p id="cardSummary"></p>
+    <div id="cardReflection" class="reflection"></div>
+    <button onclick="resetGame()">再玩一次</button>
+  </div>
 </div>
 
 <script>
-let step = 0;
-
-// ✅ 傾向計數（關鍵）
+/* 玩家狀態 */
 const player = {
-  riskTaking: 0,
-  riskAvoidance: 0
+  position:0,
+  exp:0,
+  riskScore:0,
+  triggered:[]
 };
 
-// ✅ 四題選擇（選項不含風險分數，語意清楚）
-const questions = [
+/* 關鍵格 */
+const milestones = [
+  {pos:8, qid:'Q1'},
+  {pos:18, qid:'Q2'},
+  {pos:30, qid:'Q3'},
+  {pos:42, qid:'Q4'}
+];
+
+/* 人生選擇（✅選項完全不變） */
+const choices = {
+  Q1:{
+    q:'Academic｜學術選擇',
+    A:{text:'Speed over Skill（快快過關）', risk:2},
+    B:{text:'Skill over Speed（慢慢打底）', risk:-2}
+  },
+  Q2:{
+    q:'Money｜金錢選擇',
+    A:{text:'High Risk Play（炒股 / Bitcoin）', risk:2},
+    B:{text:'Steady Path（穩定累積）', risk:-2}
+  },
+  Q3:{
+    q:'Social｜人際選擇',
+    A:{text:'Party First（即時連結）', risk:1},
+    B:{text:'Slow Build（慢慢建立）', risk:-1}
+  },
+  Q4:{
+    q:'Romantic｜感情選擇',
+    A:{text:'Chase Love（敢愛敢衝）', risk:2},
+    B:{text:'Food First（穩陣行先）', risk:-2}
+  }
+};
+
+/* ✅ Outcome 門檻（已調整） */
+const archetypes = [
   {
-    q: "Academic Integrity｜學術選擇",
-    A: { text: "Use AI / 快快過關", type: "risk" },
-    B: { text: "Write yourself / 慢慢打底", type: "avoid" }
+    min:6,
+    title:'All In Drifter',
+    emoji:'🔥',
+    color:'#c0392b',
+    image:'images/6types-02.png',
+    summary:'極端冒險、追求刺激的人生路線。',
+    reflect:'你選擇全速前進，世界會為你讓路，還是留下代價？'
   },
   {
-    q: "Money｜金錢選擇",
-    A: { text: "Speculate / 炒股 Bitcoin", type: "risk" },
-    B: { text: "Steady path / 穩定累積", type: "avoid" }
+    min:3,
+    title:'Opportunistic Sprinter',
+    emoji:'⚡',
+    color:'#e67e22',
+    image:'images/6types-01.png',
+    summary:'快手博位，善於搶佔機會。',
+    reflect:'跑得快之餘，你會停低補底嗎？'
   },
   {
-    q: "Social｜人際選擇",
-    A: { text: "Party first / 即時連結", type: "risk" },
-    B: { text: "Slow build / 慢慢建立", type: "avoid" }
+    min:-2,
+    title:'Balancer',
+    emoji:'⚖️',
+    color:'#8e44ad',
+    image:'images/6types-03.png',
+    summary:'在風險與穩定之間走鋼線。',
+    reflect:'平衡是智慧，還是猶豫？'
   },
   {
-    q: "Romantic｜感情選擇",
-    A: { text: "Chase love / 敢愛敢衝", type: "risk" },
-    B: { text: "Food first / 穩陣行先", type: "avoid" }
+    min:-5,
+    title:'Grounded Builder',
+    emoji:'🧱',
+    color:'#27ae60',
+    image:'images/6types-06.png',
+    summary:'慢工起樓，重視基礎與長線。',
+    reflect:'世界加速時，你仍然行得穩。'
+  },
+  {
+    min:-7,
+    title:'Security Seeker',
+    emoji:'🛡️',
+    color:'#16a085',
+    image:'images/6types-04.png',
+    summary:'安全優先，避免不確定性。',
+    reflect:'你保護得很好，但可能錯過探索。'
+  },
+  {
+    min:-999,
+    title:'Fortress Keeper',
+    emoji:'🏰',
+    color:'#2c3e50',
+    image:'images/6types-05.png',
+    summary:'極端防守，築起高牆。',
+    reflect:'當一切都準備好，世界還會等你嗎？'
   }
 ];
 
-function renderQuestion() {
-  const q = questions[step];
-  document.getElementById("question").innerText = q.q;
-  document.getElementById("btnA").innerText = "A｜" + q.A.text;
-  document.getElementById("btnB").innerText = "B｜" + q.B.text;
+/* 擲骰 */
+function rollDice(){
+  if(player.position>=50) return;
+
+  const diceEl=document.getElementById('dice');
+  diceEl.classList.remove('dice-rolling');
+  void diceEl.offsetWidth;
+  diceEl.classList.add('dice-rolling');
+
+  setTimeout(()=>{
+    const prev=player.position;
+    const dice=Math.floor(Math.random()*6)+1;
+    const next=Math.min(50, prev+dice);
+
+    document.getElementById('diceText').innerText=`擲到 ${dice} ｜ ${prev} → ${next}`;
+    player.position=next;
+
+    const expGain=Math.random()<0.5?1:2;
+    player.exp+=expGain;
+    logEvent(`前進到 ${next} ｜ EXP +${expGain}`);
+    updateUI();
+
+    const crossed=milestones.find(m=>prev<m.pos && next>=m.pos && !player.triggered.includes(m.pos));
+    if(crossed){
+      player.triggered.push(crossed.pos);
+      showChoice(crossed.qid);
+      return;
+    }
+
+    if(player.position>=50) showEndingCard();
+  },600);
 }
 
-function choose(opt) {
-  const choice = questions[step][opt];
-  if (choice.type === "risk") player.riskTaking++;
-  if (choice.type === "avoid") player.riskAvoidance++;
-
-  step++;
-  if (step < questions.length) {
-    renderQuestion();
-  } else {
-    showOutcome();
-  }
+/* 顯示選擇 */
+function showChoice(qid){
+  const q=choices[qid];
+  document.getElementById('question').innerText=q.q;
+  document.getElementById('choiceA').innerText='A｜'+q.A.text;
+  document.getElementById('choiceB').innerText='B｜'+q.B.text;
+  document.getElementById('choicePanel').dataset.qid=qid;
+  document.getElementById('choicePanel').classList.remove('hidden');
 }
 
-function showOutcome() {
-  document.getElementById("game").classList.add("hidden");
-  document.getElementById("result").classList.remove("hidden");
+/* 作出選擇 */
+function choose(opt){
+  const panel=document.getElementById('choicePanel');
+  const qid=panel.dataset.qid;
+  const c=choices[qid][opt];
 
-  let title = "";
-  let desc = "";
-
-  // ✅ Outcome 判定（一定會出現 Fortress Keeper）
-  if (player.riskAvoidance === 4) {
-    title = "Fortress Keeper｜高牆防守者";
-    desc = "你極度重視安全與控制，在出發前築起完整防線。";
-  } else if (player.riskAvoidance === 3) {
-    title = "Security Seeker｜安全至上派";
-    desc = "你優先確保穩定與可預測性，避免不確定風險。";
-  } else if (player.riskAvoidance === 2) {
-    title = "Grounded Builder｜慢工起樓者";
-    desc = "你相信穩固基礎，願意慢慢累積長期成果。";
-  } else if (player.riskTaking === 2 && player.riskAvoidance >= 1) {
-    title = "Balancer｜走鋼線者";
-    desc = "你在冒險與穩定之間不斷權衡。";
-  } else if (player.riskTaking === 2) {
-    title = "Opportunistic Sprinter｜快手博位者";
-    desc = "你擅長把握機會，但需要留意消耗。";
-  } else {
-    title = "Drifter｜豪賭型探索者";
-    desc = "你選擇速度與刺激，相信人生要全情投入。";
-  }
-
-  document.getElementById("outcomeTitle").innerText = title;
-  document.getElementById("outcomeDesc").innerText = desc;
+  player.riskScore+=c.risk;
+  logEvent(`${choices[qid].q} → ${c.text}`);
+  panel.classList.add('hidden');
+  updateUI();
 }
 
-function resetGame() {
-  step = 0;
-  player.riskTaking = 0;
-  player.riskAvoidance = 0;
-  document.getElementById("game").classList.remove("hidden");
-  document.getElementById("result").classList.add("hidden");
-  renderQuestion();
+/* 時間線 */
+function logEvent(text){
+  const div=document.createElement('div');
+  div.className='timeline-item';
+  div.innerText=text;
+  document.getElementById('timeline').appendChild(div);
 }
 
-// 啟動
-renderQuestion();
+/* 結局 */
+function showEndingCard(){
+  const a=archetypes.find(a=>player.riskScore>=a.min);
+  const card=document.getElementById('endingInner');
+  card.style.background=a.color;
+  cardEmoji.innerText=a.emoji;
+  cardTitle.innerText=a.title;
+  cardSummary.innerText=a.summary;
+  cardReflection.innerText=a.reflect;
+  outcomeImg.src=a.image;
+  document.getElementById('endingCard').classList.remove('hidden');
+}
+
+/* UI */
+function updateUI(){
+  document.getElementById('pos').innerText=player.position;
+  document.getElementById('exp').innerText=player.exp;
+}
+
+function resetGame(){
+  location.reload();
+}
 </script>
 
 </body>
