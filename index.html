@@ -1,91 +1,103 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>人生棋盤遊戲</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>人生棋盤遊戲</title>
 
-<style>
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont;
-  background: #f5f6fa;
-  margin: 12px;
-}
-h1 { margin-top: 6px; }
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      background: #f5f6fa;
+      margin: 12px;
+    }
+    h1 { margin-top: 6px; }
 
-.panel {
-  background: #fff;
-  padding: 14px;
-  margin-bottom: 12px;
-  border-radius: 14px;
-}
-.big {
-  font-size: 20px;
-  font-weight: bold;
-  margin: 6px 0;
-}
+    .panel {
+      background: #fff;
+      padding: 14px;
+      border-radius: 12px;
+      margin-bottom: 10px;
+    }
 
-button {
-  width: 100%;
-  padding: 14px;
-  margin-top: 8px;
-  border: none;
-  border-radius: 12px;
-  background: #4a69bd;
-  color: #fff;
-  font-size: 18px;
-}
+    .big {
+      font-size: 20px;
+      font-weight: bold;
+      margin: 6px 0;
+    }
 
-.choiceBtn {
-  background: #1e3799;
-  margin-top: 10px;
-}
+    button {
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      background: #4a69bd;
+      color: #fff;
+      font-size: 18px;
+      margin-top: 8px;
+    }
 
-.hidden { display: none; }
+    .choiceBtn {
+      background: #1e3799;
+      margin-top: 10px;
+    }
 
-#timeline {
-  max-height: 220px;
-  overflow-y: auto;
-  font-size: 14px;
-  text-align: left;
-}
-.timeline-item {
-  border-left: 5px solid #aaa;
-  padding-left: 10px;
-  margin-bottom: 6px;
-}
+    .hidden { display: none; }
 
-/* 🎲 Dice animation */
-@keyframes diceRoll {
-  0%   { transform: rotate(0deg) scale(1); }
-  30%  { transform: rotate(120deg) scale(1.2); }
-  60%  { transform: rotate(240deg) scale(1.2); }
-  100% { transform: rotate(360deg) scale(1); }
-}
-.dice-rolling {
-  animation: diceRoll 0.6s ease-in-out;
-}
+    .timeline {
+      max-height: 220px;
+      overflow: auto;
+      font-size: 14px;
+      text-align: left;
+    }
 
-/* Outcome Card */
-.archetype-card {
-  border-radius: 18px;
-  padding: 24px;
-  color: white;
-  text-align: center;
-}
-.archetype-emoji {
-  font-size: 48px;
-}
-.reflection {
-  margin-top: 12px;
-  font-size: 14px;
-  opacity: 0.95;
-}
-</style>
+    .timeline-item {
+      border-left: 5px solid #aaa;
+      padding-left: 10px;
+      margin-bottom: 6px;
+    }
+
+    /* 骰仔動畫 */
+    @keyframes diceRoll {
+      0% { transform: rotate(0deg) scale(1); }
+      30% { transform: rotate(120deg) scale(1.2); }
+      60% { transform: rotate(240deg) scale(1.2); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    .dice-rolling {
+      animation: diceRoll 0.6s ease-in-out;
+    }
+
+    /* Outcome 卡片 */
+    .archetype-card {
+      border-radius: 18px;
+      padding: 24px;
+      color: white;
+      text-align: center;
+    }
+
+    .archetype-emoji {
+      font-size: 48px;
+    }
+
+    .reflection {
+      margin-top: 12px;
+      font-size: 14px;
+      opacity: 0.95;
+    }
+
+    img.outcome-img {
+      width: 100%;
+      max-width: 320px;
+      margin: 12px auto;
+      display: block;
+      border-radius: 12px;
+    }
+  </style>
 </head>
 
 <body>
-
 <h1>人生棋盤遊戲</h1>
 
 <div class="panel">
@@ -94,7 +106,7 @@ button {
 
   <div id="diceBox" style="margin-top:10px;">
     <div id="dice" style="font-size:48px;">🎲</div>
-    <div id="diceText" style="font-size:16px; opacity:0.85;"></div>
+    <div id="diceText" style="font-size:16px;opacity:.85;"></div>
   </div>
 
   <button onclick="rollDice()">擲骰</button>
@@ -108,12 +120,13 @@ button {
 
 <div class="panel">
   <h3>人生時間線</h3>
-  <div id="timeline"></div>
+  <div id="timeline" class="timeline"></div>
 </div>
 
 <div id="endingCard" class="panel hidden">
   <div id="endingInner" class="archetype-card">
     <div class="archetype-emoji" id="cardEmoji"></div>
+    <img id="outcomeImg" class="outcome-img" alt="Outcome image">
     <h2 id="cardTitle"></h2>
     <p id="cardSummary"></p>
     <div class="reflection" id="cardReflection"></div>
@@ -122,7 +135,7 @@ button {
 </div>
 
 <script>
-/* 玩家狀態 */
+/* ===== 玩家狀態 ===== */
 const player = {
   position: 0,
   exp: 0,
@@ -130,56 +143,101 @@ const player = {
   triggered: []
 };
 
-/* 關鍵格 */
+/* ===== 關鍵格 ===== */
 const milestones = [
-  { pos: 8,  qid: "Q1" },
+  { pos: 8, qid: "Q1" },
   { pos: 18, qid: "Q2" },
   { pos: 30, qid: "Q3" },
   { pos: 42, qid: "Q4" }
 ];
 
-/* 人生選擇 */
+/* ===== 人生選擇 ===== */
 const choices = {
   Q1: {
     q: "Academic｜學術選擇",
-    A: { text: "Speed Over Skill 快快過關", risk: 2 },
-    B: { text: "Skill Over Speed 慢慢打底", risk: -2 }
+    A: { text: "Speed over Skill（快快過關）", risk: 2 },
+    B: { text: "Skill over Speed（慢慢打底）", risk: -2 }
   },
   Q2: {
     q: "Money｜金錢選擇",
-    A: { text: "High Risk Play 刺激型收入", risk: 2 },
-    B: { text: "Steady Path 穩陣累積", risk: -2 }
+    A: { text: "High Risk Play（炒股／Bitcoin）", risk: 2 },
+    B: { text: "Steady Path（穩定累積）", risk: -2 }
   },
   Q3: {
-    q: "Friends｜朋友相處",
-    A: { text: "Immediate Connection 即時連結", risk: 1 },
-    B: { text: "Slow Build 慢慢熟", risk: -1 }
+    q: "Social｜人際選擇",
+    A: { text: "Party First（即時連結）", risk: 1 },
+    B: { text: "Slow Build（慢慢建立）", risk: -1 }
   },
   Q4: {
-    q: "Partner Choice｜伴侶選擇",
-    A: { text: "Thrill-led Love 激情先行", risk: 2 },
-    B: { text: "Stability-led Choice 穩定先行", risk: -2 }
+    q: "Romantic｜感情選擇",
+    A: { text: "Chase Love（敢愛敢衝）", risk: 2 },
+    B: { text: "Food First（穩陣行先）", risk: -2 }
   }
 };
 
-/* Outcome */
+/* ===== Outcome ===== */
 const archetypes = [
-  { min: 6, emoji:"🔥", color:"#c0392b", title:"豪賭型探索者 All‑In Drifter", summary:"You only live once", reflect:"刺激帶嚟速度，但方向係咪清楚？快，係向前，定係打圈？",image: "images/6types-02.png" },
-  { min: 3, emoji:"⚡", color:"#e67e22", title:"快手博位者 Opportunistic Sprinter", summary:"先搶位，再補底", reflect:"你贏緊機會，定係消耗緊未來嘅自己？",image: "images/6types-01.png" },
-  { min: -2, emoji:"🎭", color:"#8e44ad", title:"走鋼線的人 Balancer", summary:"唔想輸，但都唔想悶", reflect:"平衡係智慧，定係猶豫？呢個平衡係你揀，定係拖出嚟？",image: "images/6types-03.png" },
-  { min: -5, emoji:"🏗️", color:"#27ae60", title:"慢工起樓者 Grounded Builder", summary:"行得慢，但行得遠", reflect:"穩定帶嚟安全，但會唔會限制可能性？",image: "images/6types-06.png" },
-  { min: -8, emoji:"🛡️", color:"#16a085", title:"安全至上派 Security Seeker", summary:"唔輸，已經係贏", reflect:"安全感係保護你，定係困住你？",image: "images/6types-04.png" },
-  { min: -999, emoji:"🏰", color:"#2c3e50", title:"高牆防守者 Fortress Keeper", summary:"準備好先行", reflect:"如果永遠等到「準備好」，人生會唔會未開始？",image: "images/6types-05.png" }
+  {
+    min: 6,
+    title: "All In Drifter",
+    emoji: "🔥",
+    color: "#c0392b",
+    image: "images/6types-02.png",
+    summary: "極端冒險、追求刺激的人生路線",
+    reflect: "你享受速度與強度，但方向是否清楚？"
+  },
+  {
+    min: 3,
+    title: "Opportunistic Sprinter",
+    emoji: "⚡",
+    color: "#e67e22",
+    image: "images/6types-01.png",
+    summary: "快手博位，搶佔機會",
+    reflect: "你跑得很快，但能否補底？"
+  },
+  {
+    min: -2,
+    title: "Balancer",
+    emoji: "⚖️",
+    color: "#8e44ad",
+    image: "images/6types-03.png",
+    summary: "在風險與穩定之間走鋼線",
+    reflect: "平衡是智慧，還是猶豫？"
+  },
+  {
+    min: -5,
+    title: "Grounded Builder",
+    emoji: "🧱",
+    color: "#27ae60",
+    image: "images/6types-06.png",
+    summary: "慢工起樓，基礎穩定",
+    reflect: "你行得慢，但行得遠。"
+  },
+  {
+    min: -8,
+    title: "Security Seeker",
+    emoji: "🛡️",
+    color: "#16a085",
+    image: "images/6types-04.png",
+    summary: "安全至上，避免不確定",
+    reflect: "安全感是否限制了可能性？"
+  },
+  {
+    min: -999,
+    title: "Fortress Keeper",
+    emoji: "🏰",
+    color: "#2c3e50",
+    image: "images/6types-05.png",
+    summary: "高度防守，尚未出發",
+    reflect: "你準備好了嗎？"
+  }
 ];
 
-/* 🎲 擲骰（含動畫） */
+/* ===== 擲骰 ===== */
 function rollDice() {
   if (player.position >= 50) return;
 
   const diceEl = document.getElementById("dice");
-  const diceText = document.getElementById("diceText");
-
-  diceText.innerText = "";
   diceEl.classList.remove("dice-rolling");
   void diceEl.offsetWidth;
   diceEl.classList.add("dice-rolling");
@@ -189,14 +247,14 @@ function rollDice() {
     const dice = Math.floor(Math.random() * 6) + 1;
     const next = Math.min(50, prev + dice);
 
-    diceText.innerText = `擲到 ${dice} 點｜由第 ${prev} 格 → 第 ${next} 格`;
+    document.getElementById("diceText").innerText =
+      `擲到 ${dice} 點：${prev} → ${next}`;
 
     player.position = next;
-
     const expGain = Math.random() < 0.5 ? 1 : 2;
     player.exp += expGain;
-    logEvent(`前進到第 ${next} 格｜EXP +${expGain}`);
 
+    logEvent(`前進至第 ${next} 格｜EXP +${expGain}`);
     updateUI();
 
     const crossed = milestones.find(
@@ -213,26 +271,26 @@ function rollDice() {
   }, 600);
 }
 
-/* 人生選擇 */
+/* ===== 選擇 ===== */
 function showChoice(qid) {
   const q = choices[qid];
   document.getElementById("question").innerText = q.q;
   document.getElementById("choiceA").innerText = "A｜" + q.A.text;
   document.getElementById("choiceB").innerText = "B｜" + q.B.text;
-  document.getElementById("choicePanel").dataset.qid = qid;
   document.getElementById("choicePanel").classList.remove("hidden");
+  document.getElementById("choicePanel").dataset.qid = qid;
 }
 
 function choose(opt) {
   const qid = document.getElementById("choicePanel").dataset.qid;
-  const choice = choices[qid][opt];
-  player.riskScore += choice.risk;
-  logEvent(`${choices[qid].q} → ${choice.text}`);
+  const c = choices[qid][opt];
+  player.riskScore += c.risk;
+  logEvent(`${choices[qid].q} → ${c.text}`);
   document.getElementById("choicePanel").classList.add("hidden");
   updateUI();
 }
 
-/* 時間線 */
+/* ===== 時間線 ===== */
 function logEvent(text) {
   const div = document.createElement("div");
   div.className = "timeline-item";
@@ -240,7 +298,7 @@ function logEvent(text) {
   document.getElementById("timeline").appendChild(div);
 }
 
-/* 結局 */
+/* ===== 結局 ===== */
 function showEndingCard() {
   const a = archetypes.find(a => player.riskScore >= a.min);
   const card = document.getElementById("endingInner");
@@ -249,10 +307,11 @@ function showEndingCard() {
   document.getElementById("cardTitle").innerText = a.title;
   document.getElementById("cardSummary").innerText = a.summary;
   document.getElementById("cardReflection").innerText = a.reflect;
+  document.getElementById("outcomeImg").src = a.image;
   document.getElementById("endingCard").classList.remove("hidden");
 }
 
-/* UI */
+/* ===== UI ===== */
 function updateUI() {
   document.getElementById("pos").innerText = player.position;
   document.getElementById("exp").innerText = player.exp;
@@ -262,6 +321,5 @@ function resetGame() {
   location.reload();
 }
 </script>
-
 </body>
 </html>
